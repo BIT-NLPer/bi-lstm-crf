@@ -35,13 +35,12 @@ def __save_model(model_dir, model):
 
 # 训练
 def train(args):
-
     model_dir = args.model_dir
     if not exists(model_dir):
         mkdir(model_dir)
-    save_json_file(vars(args), arguments_filepath(model_dir))#保存json
+    save_json_file(vars(args), arguments_filepath(model_dir))  # 保存json
 
-    #预处理
+    # 预处理
     preprocessor = Preprocessor(config_dir=args.corpus_dir, save_config_dir=args.model_dir, verbose=True)
     model = build_model(args, preprocessor, load=args.recovery, verbose=True)
 
@@ -56,14 +55,15 @@ def train(args):
     valid_dl = DataLoader(TensorDataset(x_val, y_val), batch_size=args.batch_size * 2)
     test_dl = DataLoader(TensorDataset(x_test, y_test), batch_size=args.batch_size * 2)
 
-
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     device = running_device(args.device)
     model.to(device)
 
+    # 损失
     val_loss = 0
     best_val_loss = 1e4
+
     for epoch in range(args.num_epoch):
         # train
         model.train()
@@ -101,6 +101,7 @@ def train(args):
 
 def main():
     import argparse
+    # 参数
     parser = argparse.ArgumentParser()
     parser.add_argument('corpus_dir', type=str, help="the corpus directory")
     parser.add_argument('--model_dir', type=str, default="model_dir", help="the output directory for model files")

@@ -1,3 +1,5 @@
+# 预测
+
 import argparse
 import numpy as np
 from bi_lstm_crf.app.preprocessing import *
@@ -8,7 +10,7 @@ class WordsTagger:
     def __init__(self, model_dir, device=None):
         args_ = load_json_file(arguments_filepath(model_dir))
         args = argparse.Namespace(**args_)
-        args.model_dir = model_dir
+        args.model_dir = model_dir  # 模型
         self.args = args
 
         self.preprocessor = Preprocessor(config_dir=model_dir, verbose=False)
@@ -70,13 +72,14 @@ class WordsTagger:
 
 def main():
     parser = argparse.ArgumentParser()
+    # 参数
     parser.add_argument("sentence", type=str, help="the sentence to be predicted")
     parser.add_argument('--model_dir', type=str, required=True, help="the model directory for model files")
     parser.add_argument('--device', type=str, default=None,
                         help='the training device: "cuda:0", "cpu:0". It will be auto-detected by default')
 
     args = parser.parse_args()
-
+    # 调用
     results = WordsTagger(args.model_dir, args.device)([args.sentence])
     print(args.sentence)
     for objs in results:
