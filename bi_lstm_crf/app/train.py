@@ -1,3 +1,5 @@
+# 训练
+
 from os import mkdir
 from tqdm import tqdm
 import pandas as pd
@@ -8,6 +10,7 @@ from bi_lstm_crf.app.preprocessing import *
 from bi_lstm_crf.app.utils import *
 
 
+# 评估模型，计算损失
 def __eval_model(model, device, dataloader, desc):
     model.eval()
     with torch.no_grad():
@@ -15,25 +18,30 @@ def __eval_model(model, device, dataloader, desc):
         losses, nums = zip(*[
             (model.loss(xb.to(device), yb.to(device)), len(xb))
             for xb, yb in tqdm(dataloader, desc=desc)])
-        return np.sum(np.multiply(losses, nums)) / np.sum(nums)
+        return np.sum(np.multiply(losses, nums)) / np.sum(nums)  # 计算方法
 
 
+# 保存损失值
 def __save_loss(losses, file_path):
     pd.DataFrame(data=losses, columns=["epoch", "batch", "train_loss", "val_loss"]).to_csv(file_path, index=False)
 
 
+# 保存模型
 def __save_model(model_dir, model):
     model_path = model_filepath(model_dir)
     torch.save(model.state_dict(), model_path)
     print("save model => {}".format(model_path))
 
 
+# 训练
 def train(args):
+
     model_dir = args.model_dir
     if not exists(model_dir):
         mkdir(model_dir)
-    save_json_file(vars(args), arguments_filepath(model_dir))
+    save_json_file(vars(args), arguments_filepath(model_dir))#保存json
 
+    #预处理
     preprocessor = Preprocessor(config_dir=args.corpus_dir, save_config_dir=args.model_dir, verbose=True)
     model = build_model(args, preprocessor, load=args.recovery, verbose=True)
 
@@ -41,12 +49,13 @@ def train(args):
     loss_path = join(args.model_dir, "loss.csv")
     losses = pd.read_csv(loss_path).values.tolist() if args.recovery and exists(loss_path) else []
 
-    # datasets
+    # datasets数据集
     (x_train, y_train), (x_val, y_val), (x_test, y_test) = preprocessor.load_dataset(
         args.corpus_dir, args.val_split, args.test_split, max_seq_len=args.max_seq_len)
     train_dl = DataLoader(TensorDataset(x_train, y_train), batch_size=args.batch_size, shuffle=True)
     valid_dl = DataLoader(TensorDataset(x_val, y_val), batch_size=args.batch_size * 2)
     test_dl = DataLoader(TensorDataset(x_test, y_test), batch_size=args.batch_size * 2)
+
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
@@ -66,7 +75,7 @@ def train(args):
             loss.backward()
             optimizer.step()
             bar.set_description("{:2d}/{} loss: {:5.2f}, val_loss: {:5.2f}".format(
-                epoch+1, args.num_epoch, loss, val_loss))
+                epoch + 1, args.num_epoch, loss, val_loss))
             losses.append([epoch, bi, loss.item(), np.nan])
 
         # evaluation
