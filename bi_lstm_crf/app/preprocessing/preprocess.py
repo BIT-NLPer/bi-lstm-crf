@@ -10,13 +10,15 @@ FILE_DATASET = "dataset.txt"
 FILE_DATASET_CACHE = "dataset_cache_{}.npz"
 
 
+# 预处理
 class Preprocessor:
     def __init__(self, config_dir, save_config_dir=None, verbose=True):
-        self.config_dir = config_dir
-        self.verbose = verbose
+        self.config_dir = config_dir  # 配置文件
+        self.verbose = verbose  # 显示详细信息
 
-        self.vocab, self.vocab_dict = self.__load_list_file(FILE_VOCAB, offset=1, verbose=verbose)
-        self.tags, self.tags_dict = self.__load_list_file(FILE_TAGS, verbose=verbose)
+        self.vocab, self.vocab_dict = self.__load_list_file(FILE_VOCAB, offset=1, verbose=verbose)  # 词汇
+        self.tags, self.tags_dict = self.__load_list_file(FILE_TAGS, verbose=verbose)  # 标签
+
         if save_config_dir:
             self.__save_config(save_config_dir)
 
@@ -24,17 +26,19 @@ class Preprocessor:
         self.OOV_IDX = len(self.vocab)
         self.__adjust_vocab()
 
+    # 加载文件
     def __load_list_file(self, file_name, offset=0, verbose=False):
         file_path = join(self.config_dir, file_name)
         if not exists(file_path):
             raise ValueError('"{}" file does not exist.'.format(file_path))
         else:
             elements = load_json_file(file_path)
-            elements_dict = {w: idx + offset for idx, w in enumerate(elements)}
+            elements_dict = {w: (idx + offset) for idx, w in enumerate(elements)}
             if verbose:
                 print("config {} loaded".format(file_path))
             return elements, elements_dict
 
+    # 调整单词
     def __adjust_vocab(self):
         self.vocab.insert(0, PAD)
         self.vocab_dict[PAD] = 0
@@ -42,6 +46,7 @@ class Preprocessor:
         self.vocab.append(OOV)
         self.vocab_dict[OOV] = len(self.vocab) - 1
 
+    # 保存配置文件
     def __save_config(self, dst_dir):
         char_file = join(dst_dir, FILE_VOCAB)
         save_json_file(self.vocab, char_file)
@@ -54,9 +59,11 @@ class Preprocessor:
             print("tag dict file => {}".format(char_file))
 
     @staticmethod
+    # cache文件路径
     def __cache_file_path(corpus_dir, max_seq_len):
         return join(corpus_dir, FILE_DATASET_CACHE.format(max_seq_len))
 
+    # 加载数据集
     def load_dataset(self, corpus_dir, val_split, test_split, max_seq_len):
         """load the train set
 
@@ -91,6 +98,7 @@ class Preprocessor:
             print("\t{}: {}, {}".format(name, xs_.shape, ys_.shape))
         return datasets
 
+    # 返回解码
     def decode_tags(self, batch_tags):
         batch_tags = [
             [self.tags[t] for t in tags]
@@ -98,16 +106,19 @@ class Preprocessor:
         ]
         return batch_tags
 
+    # ->向量
     def sent_to_vector(self, sentence, max_seq_len=0):
         max_seq_len = max_seq_len if max_seq_len > 0 else len(sentence)
         vec = [self.vocab_dict.get(c, self.OOV_IDX) for c in sentence[:max_seq_len]]
         return vec + [self.PAD_IDX] * (max_seq_len - len(vec))
 
+    # 标签->向量
     def tags_to_vector(self, tags, max_seq_len=0):
         max_seq_len = max_seq_len if max_seq_len > 0 else len(tags)
         vec = [self.tags_dict[c] for c in tags[:max_seq_len]]
         return vec + [0] * (max_seq_len - len(vec))
 
+    # 构建语料库
     def __build_corpus(self, corpus_dir, max_seq_len):
         file_path = join(corpus_dir, FILE_DATASET)
         xs, ys = [], []
@@ -119,7 +130,7 @@ class Preprocessor:
 
                 sentence, tags = fields
                 try:
-                    if sentence[0] == "[":
+                    if sentence[0] == "[":  # 列表
                         sentence = json.loads(sentence)
                     tags = json.loads(tags)
                     xs.append(self.sent_to_vector(sentence, max_seq_len=max_seq_len))
@@ -133,6 +144,7 @@ class Preprocessor:
         xs, ys = np.asarray(xs), np.asarray(ys)
 
         # save train set
+        # 保存训练结果
         cache_file = self.__cache_file_path(corpus_dir, max_seq_len)
         np.savez(cache_file, xs=xs, ys=ys)
         print("dataset cache({}, {}) => {}".format(xs.shape, ys.shape, cache_file))
