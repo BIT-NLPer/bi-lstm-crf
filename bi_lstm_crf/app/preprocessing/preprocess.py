@@ -130,7 +130,7 @@ class Preprocessor:
 
                 sentence, tags = fields
                 try:
-                    if sentence[0] == "[":  # 列表
+                    if sentence[0] == "[":
                         sentence = json.loads(sentence)
                     tags = json.loads(tags)
                     xs.append(self.sent_to_vector(sentence, max_seq_len=max_seq_len))
